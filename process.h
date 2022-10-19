@@ -7,17 +7,17 @@
 
 // Inicializacao da estrutura de um processo
 typedef struct process {
-	int Pid;
-	int QueuePos; // Posicao na Queue
-	int Arrival, ArrivalTime;
-	int BurstTime, ExecTime, ExecTimeQueue;
-	int IOBurstTime, IOFreq;
-	int StartTime;
-	int CompleteTime;
-	int TurnArountTime;
-	int WaitTime;
-	int Ready;
-	struct process* next;
+  int Pid;
+  int QueuePos; // Posicao na Queue
+  int Arrival, ArrivalTime;
+  int BurstTime, ExecTime, ExecTimeQueue;
+  int IOBurstTime, IOFreq;
+  int StartTime;
+  int CompleteTime;
+  int TurnArountTime;
+  int WaitTime;
+  int Ready;
+  struct process* next;
 } Process;
 
 // Declaracao de funcoes
@@ -34,15 +34,15 @@ Process* pcopy (Process* p);
  */
 void arrivalSort (Process process[], int n) {
   Process temp;
-	for (int i = 0; i < n; i++) {
-		for (int j = i + 1; j < n; j++) {
-			if (process[i].ArrivalTime > process[j].ArrivalTime) {
+  for (int i = 0; i < n; i++) {
+    for (int j = i + 1; j < n; j++) {
+      if (process[i].ArrivalTime > process[j].ArrivalTime) {
         temp = process[i];
         process[i] = process[j];
         process[j] = temp;
-			}
-		}
-	}
+      }
+    }
+  }
 }
 
 /**
