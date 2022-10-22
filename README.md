@@ -1,4 +1,10 @@
-# Sistemas Operacionais 22.2
+# Sistemas Operacionais 22.2 - Escalonador de Processos
+Desenvolver um simulador que implementa o algoritmo de escalonamento de processos, usando a estratégia de seleção Round Robin (ou Circular) com Feedback.
+
+## Alunos:
+- Carolina Naccarato
+- Cristian Diamantaras
+- Daniel de Sousa
 
 ## Regras:
 1. Se Prioridade(A) > Prioridade(B), A é executado (B não).
