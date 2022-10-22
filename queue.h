@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifndef QUEUE
 #define QUEUE
 
 // Inicializacao da estrutura de uma queue
@@ -13,19 +14,18 @@ typedef struct queue {
   Process* tail;
 } Queue;
 
-// Declaracao de funcoes
-Queue initqueue (int QueuePos);
+Queue initQueue (int QueuePos);
 int isEmpty (Queue q);
 void enqueue (Queue* q, Process* p);
 Process* dequeue (Queue* q);
-void prioritySort (Queue q[], int priority);
-void printQueue (Queue q);
+void sortqbypriority (Queue q[], int x);
+void printqueue (Queue q);
 
 /**
  * Inicializa atributos da queue
  * @param QueuePos posicao na Queue
  */ 
-Queue initqueue (int QueuePos) {
+Queue initQueue (int QueuePos) {
   Queue q;
   q.QueuePos = QueuePos;
   q.priority = 0;
@@ -73,30 +73,27 @@ Process* dequeue (Queue* q) {
   return temp;
 }
 
-
 /**
  * Ordena a queue de acordo com a prioridade
  * @param q[] lista de instancias de uma queue
  * @param priority prioridade que usaremos como base no sort
  */
-void prioritySort (Queue q[], int priority) {
+void prioritySort (Queue q[], int x) {
   Queue temp;
-  for (int i = 0; i < priority; i++) {
-    for (int j = i + 1; j < x; j++) {
+  for (int i = 0; i < x; i++)
+    for (int j = i + 1; j < x; j++)
       if (q[i].priority > q[j].priority) {
         temp = q[i];
         q[i] = q[j];
         q[j] = temp;
       }
-    }
-  }
 }
 
 /**
  * Imprime os elementos da queue
  * @param q instancia de uma queue
  */
-void printQueue (Queue q) {
+void printqueue (Queue q) {
   Process* curr = q.head;
   printf("Q[%d]\t", q.QueuePos);
   while (curr != NULL) {
@@ -104,3 +101,5 @@ void printQueue (Queue q) {
     curr = curr->next;
   }
 }
+
+#endif

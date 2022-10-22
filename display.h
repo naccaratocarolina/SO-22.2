@@ -3,34 +3,23 @@
 #include <math.h>
 #include <stdio.h>
 
+#ifndef DISPLAY
 #define DISPLAY
 
-void displayProcess (Queue q[], Queue io, Process p[], int x, int n, float awt);
-void printLabel (char* label);
-int getNumDigits (int num);
+void displayProcess (Queue q[], Queue io, Process p[], int x, int y, float awt);
+void printLabel (char* str);
 void printGnattChart (Queue gnatt);
+int getNumDigits (int num);
 
-/**
- * Imprime os elementos de acordo com o tipo de fila que
- * o mesmo se encontra e calcula o tempo medio de espera
- * @param q[] lista de instancias de uma queue
- * @param io lista de IO
- * @param x posicao do processo que esta sendo executado
- * @param n quantidade de processos
- * @param awt Average Wait Time
- */
-void displayProcess (
-  Queue q[], Queue io, Process p[], int x, int n, float awt
-) {
-  pidSort(p, n);
-  printLabel("\n\nLista de processos\n");
+void displayProcess (Queue q[], Queue io, Process p[], int x, int y, float awt) {
+  pidSort(p, y);
+  printLabel("\n\nLista de Processos\n");
+  for (int i = 0; i < y; i++) {
 
-  for (int i = 0; i < n; i++) {
-    Queue temp = initqueue(-1);
+    Queue temp = initQueue(-1);
     int count = 0;
-
     printf("------------------------------------------------------------\n");
-    printf("Process %d    Queue     StartTime    End    WaitTime    TurnArountTime\n", p[i].Pid);
+    printf("Processo %d    Queue     Start    End    Waiting    Turnaround\n", p[i].Pid);
 
     for (int j = 0; j < x + 1; j++) {
       Process* curr = q[j].head;
@@ -43,51 +32,50 @@ void displayProcess (
         }
         curr = curr->next;
       }
-
-      Process temparr[count];
-      for (int k = 0; k < count; k++) {
-        if (temp.head != NULL) temparr[k] = *dequeue(&temp);
-      }
-
-      startTimeSort(temparr, count);
-      for (int k = 0; k < count; k++) {
-        enqueue(&temp, &temparr[k]);
-      }
-      
-      // Calcula tempo medio de espera
-      Process* curr = temp.head;
-      float WaitTime = 0;
-      float TurnArountTime = 0;
-      while (curr != NULL) {
-        if (curr->Pid == p[i].Pid) {
-          if (curr->QueuePos != -1) {
-            printf("%*c%d%*c", 13, ' ', curr->QueuePos, 8 - getNumDigits(curr->QueuePos), ' ');
-          } else {
-            printf("%*cIO%*c", 13, ' ', 7, ' ');
-          }
-          printf("%d%*c", curr->StartTime, 8 - getNumDigits(curr->StartTime), ' ');
-          printf("%d%*c", curr->CompleteTime, 6 - getNumDigits(curr->CompleteTime), ' ');
-          printf("%d%*c", curr->WaitTime, 10 - getNumDigits(curr->WaitTime), ' ');
-          printf("%d\n", curr->TurnArountTime);
-        }
-        WaitTime = curr->WaitTime;
-        TurnArountTime = curr->TurnArountTime;
-        curr = curr->next;
-      }
-      printf("\nWaiting Time: %.1f", WaitTime);
-      printf("\nTurnaround Time: %.1f\n", TurnArountTime);
     }
 
-    printf("------------------------------------------------------------");
-    printf("\nAverage Wait Time: %.1f\n\n", awt);
+    Process temparr[count];
+    for (int k = 0; k < count; k++) {
+      if (temp.head != NULL) temparr[k] = *dequeue(&temp);
+    }
+
+    sortbyStartTime(temparr, count);
+    for (int k = 0; k < count; k++) {
+      enqueue(&temp, &temparr[k]);
+    }
+
+    Process* curr = temp.head;
+    float waiting = 0;
+    float TurnArountTime = 0;
+    while (curr != NULL) {
+      if (curr->Pid == p[i].Pid) {
+        if (curr->QueuePos != -1) {
+          printf("%*c%d%*c", 13, ' ', curr->QueuePos, 8 - getNumDigits(curr->QueuePos), ' ');
+        } else {
+          printf("%*cIO%*c", 13, ' ', 7, ' ');
+        }
+        printf("%d%*c", curr->StartTime, 8 - getNumDigits(curr->StartTime), ' ');
+        printf("%d%*c", curr->CompleteTime, 6 - getNumDigits(curr->CompleteTime), ' ');
+        printf("%d%*c", curr->waiting, 10 - getNumDigits(curr->waiting), ' ');
+        printf("%d\n", curr->TurnArountTime);
+      }
+      waiting = curr->waiting;
+      TurnArountTime = curr->TurnArountTime;
+      curr = curr->next;
+    }
+    printf("\nWaiting Time: %.1f", waiting);
+    printf("\nTurnaround Time: %.1f\n", TurnArountTime);
   }
+
+  printf("------------------------------------------------------------");
+  printf("\nAverage Waiting Time: %.1f\n\n", awt);
 }
 
 /**
  * @param label mensagem a ser impressa
  */
-void printLabel (char* label) {
-  printf("%s", label);
+void printLabel (char* str) {
+  printf("%s", str);
 }
 
 /**
@@ -101,13 +89,13 @@ int getNumDigits (int num) {
 
 /**
  * Cria o Diagrama de Gantt
- * @param gnatt fila de processos
+ * @param gnatt fila de processos de io
  */
 void printGnattChart (Queue gnatt) {
   if (gnatt.QueuePos != -1) {
     printf("\nQueue %d\n", gnatt.QueuePos);
   } else {
-    printf("\nIO\n", gnatt.QueuePos);
+    printf("\nIO %d\n", gnatt.QueuePos);
   }
   Process* curr = gnatt.head;
   Process* last = gnatt.head;
@@ -128,3 +116,5 @@ void printGnattChart (Queue gnatt) {
   }
   printf("\n");
 }
+
+#endif
