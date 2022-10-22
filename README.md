@@ -6,6 +6,17 @@ Desenvolver um simulador que implementa o algoritmo de escalonamento de processo
 - Cristian Diamantaras
 - Daniel de Sousa
 
+## Setup:
+- Compile o arquivo principal
+```
+gcc main.c -o saida
+```
+
+- Rode o executavel
+```
+./saida
+```
+
 ## Regras:
 1. Se Prioridade(A) > Prioridade(B), A é executado (B não).
 
