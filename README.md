@@ -40,7 +40,7 @@ gcc main.c -o saida
   - B é a prioridade, e
   - C é o quantum e tempo para esta fila.
 
-  - Haverá Y linhas de inteiros separados por espaço F G H I J.
+- Haverá Y linhas de inteiros separados por espaço F G H I J.
   - F é o ID do processo,
   - G é a hora de chegada, e
   - H é o tempo total de execução.
