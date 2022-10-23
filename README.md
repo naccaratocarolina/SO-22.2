@@ -9,7 +9,7 @@ Desenvolver um simulador que implementa o algoritmo de escalonamento de processo
 ## Setup:
 - Compile o arquivo principal
 ```
-gcc main.c -o saida
+gcc main.c -o saida -lm
 ```
 
 - Rode o executavel
