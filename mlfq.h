@@ -52,6 +52,7 @@ void mlfq (Queue queue[], int x, Process process[], int y, int pboost) {
 
         // Executa round robin
         rr(queue[i], &gnatt[i], &clock, &sum, &pb, 0);
+        // Verifica se um IO precisa ser executado
         if (ioBurstTime(queue, gnatt, &gnatt[x], i, x, &clock, &sum, &pb, &pdone)) {
           break;
         }
@@ -59,15 +60,18 @@ void mlfq (Queue queue[], int x, Process process[], int y, int pboost) {
         // Calcula process burst
         if (pb <= 0) {
           // Move o último processo em execução para o final da fila
-          if (queue[i].head != NULL)
+          if (queue[i].head != NULL) {
             enqueue(&queue[i], dequeue(&queue[i]));
+          }
 
-          // Mova tudo para a fila de prontos
+          // Move tudo para a fila de prontos
           for (int j = i; j < x; j++) {
-            while (queue[j].head != queue[j].tail)
+            while (queue[j].head != queue[j].tail) {
               enqueue(&Ready, dequeue(&queue[j]));
-            if (queue[j].head != NULL)
+            }
+            if (queue[j].head != NULL) {
               enqueue(&Ready, dequeue(&queue[j]));
+            }
           }
 
           // Atualiza o valor do tempo restante antes do próximo aumento

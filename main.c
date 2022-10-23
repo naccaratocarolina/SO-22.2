@@ -25,12 +25,10 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  // Armazena o numero de filas, numero de processos e
-  // priority boost
+  // Armazena o numero de filas, numero de processos e quantum
   int xys[3];
   fscanf(fp, "%d %d %d", &xys[0], &xys[1], &xys[2]);
-  if (xys[2] == 0)
-    xys[2] = 1;
+  if (xys[2] == 0) xys[2] = 1;
 
   // Armazena x filas
   Queue queue[xys[0]];
@@ -64,10 +62,16 @@ int main() {
 }
 
 void getProcess (FILE* fp, Process* process) {
-  if (fscanf(fp, "%d", &process->Pid) == EOF || fscanf(fp, "%d", &process->Arrival) == EOF || fscanf(fp, "%d", &process->BurstTime) == EOF || fscanf(fp, "%d", &process->ioBurstTime) == EOF || fscanf(fp, "%d", &process->ioFreq) == EOF) {
+  // Tratamento de erro do input
+  if (fscanf(fp, "%d", &process->Pid) == EOF ||
+      fscanf(fp, "%d", &process->Arrival) == EOF ||
+      fscanf(fp, "%d", &process->BurstTime) == EOF ||
+      fscanf(fp, "%d", &process->ioBurstTime) == EOF ||
+      fscanf(fp, "%d", &process->ioFreq) == EOF) {
     printf("O número de valores listados é menor que o valor especificado.\n");
     exit(EXIT_FAILURE);
   } else {
+    // Armazena informacoes do processo
     process->ExecTime = process->BurstTime;
     process->ArrivalTime = process->Arrival;
     process->next = NULL;

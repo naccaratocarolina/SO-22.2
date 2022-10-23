@@ -10,10 +10,10 @@
  * @param q lista de processos
  * @param ioQueue lista de io
  * @param sum variavel acumuladora que armazena o tempo total de execucao
- * @param boost
+ * @param pb fatia de tempo do processo na CPU
  * @param execfor tempo de execucao do processo
  */
-void rr(Queue q, Queue* gnatt, int* clock, int* sum, int* pb, int execfor) {
+void rr (Queue q, Queue* gnatt, int* clock, int* sum, int* pb, int execfor) {
   int exec = q.head->ExecTime;
   if (q.quantum < exec) exec = q.quantum;
 

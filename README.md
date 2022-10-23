@@ -16,6 +16,10 @@ gcc main.c -o saida
 ```
 ./saida
 ```
+## Premissas:
+- É possível criar de 2 à 5 filas
+- O número de processos deve estar entre 3 e 100
+- O quantum não pode ser negativo
 
 ## Regras:
 1. Se Prioridade(A) > Prioridade(B), A é executado (B não).
@@ -26,14 +30,14 @@ gcc main.c -o saida
 
 4. Uma vez que um job usa seu quantum de tempo em um determinado nível (independentemente de quantas vezes ele desistiu da CPU, por exemplo, durante uma rajada de E/S), sua prioridade é reduzida (ou seja, ele desce uma fila).
 
-5. Após algum período de tempo S, mova todos os trabalhos do sistema para a fila mais alta.
+5. Após algum período de tempo S, move todos os jobs do sistema para a fila mais alta.
 
 # Input:
 
 - A primeira linha contém 3 inteiros separados por espaço, X Y S.
-  - X denota o algoritmo de agendamento da CPU.
+  - X denota o numero de filas onde 2 ≤ X ≤ 5.
   - Y denota o número de processos onde 3 ≤ Y ≤ 100
-  - S denota o período de tempo para o aumento de prioridade.
+  - S denota o quantum.
 
 - Haverá X linhas de inteiros separados por espaço A B C.
   - A é o ID da fila,
@@ -41,8 +45,8 @@ gcc main.c -o saida
   - C é o quantum e tempo para esta fila.
 
 - Haverá Y linhas de inteiros separados por espaço F G H I J.
-  - F é o ID do processo,
-  - G é a hora de chegada, e
-  - H é o tempo total de execução.
-  - I é a duração da rajada de IO.
-  - J é a frequência da rajada de IO.
+  - F é o ID do processo (Pid),
+  - G é a hora de chegada (Arrival), e
+  - H é o tempo total de execução (BurstTime).
+  - I é a duração da rajada de IO (ioBurstTime).
+  - J é a frequência da rajada de IO (ioFreq).

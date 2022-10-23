@@ -19,7 +19,7 @@ void displayProcess (Queue q[], Queue io, Process p[], int x, int y, float awt) 
     Queue temp = initQueue(-1);
     int count = 0;
     printf("------------------------------------------------------------\n");
-    printf("Processo %d    Queue     Start    End    Waiting    Turnaround\n", p[i].Pid);
+    printf("Processo %d    Fila     Inicio    Fim    Espera    Turnaround\n", p[i].Pid);
 
     for (int j = 0; j < x + 1; j++) {
       Process* curr = q[j].head;
@@ -63,12 +63,12 @@ void displayProcess (Queue q[], Queue io, Process p[], int x, int y, float awt) 
       TurnArountTime = curr->TurnArountTime;
       curr = curr->next;
     }
-    printf("\nWaiting Time: %.1f", waiting);
-    printf("\nTurnaround Time: %.1f\n", TurnArountTime);
+    printf("\nTempo de espera: %.1f", waiting);
+    printf("\nTurnaround: %.1f\n", TurnArountTime);
   }
 
   printf("------------------------------------------------------------");
-  printf("\nAverage Waiting Time: %.1f\n\n", awt);
+  printf("\nTempo medio de espera: %.1f\n\n", awt);
 }
 
 /**
@@ -95,22 +95,21 @@ void printGnattChart (Queue gnatt) {
   if (gnatt.QueuePos != -1) {
     printf("\nQueue %d\n", gnatt.QueuePos);
   } else {
-    printf("\nIO %d\n", gnatt.QueuePos);
+    printf("\nIO\n");
   }
   Process* curr = gnatt.head;
   Process* last = gnatt.head;
   while (curr != NULL) {
     if (last == curr) {
-      if (curr->StartTime != 0) printf("[///] ");
-    } else if (last->CompleteTime < curr->StartTime) {
-      printf("[///] ");
-    }
+      if (curr->StartTime != 0) printf("[//] ");
+    } 
     printf(" %d", curr->StartTime);
     printf("%*c", (curr->CompleteTime - curr->StartTime) / 2, ' ');
     printf(" P%d ", curr->Pid);
     printf("%*c", (curr->CompleteTime - curr->StartTime) / 2, ' ');
     printf("%d ", curr->CompleteTime);
     printf(" ");
+    printf("[//] ");
     last = curr;
     curr = curr->next;
   }

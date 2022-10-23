@@ -8,11 +8,14 @@
 #define IO
 
 /**
- * Calcula a fatia de tempo que o io vai ocupar na CPU (IO burst).
- * Nesta implementação, o IO não se sobrepõe.
+ * Percorre a fila de io e escalona seus processos de acordo com
+ * o algoritmo First Come First Serve, calculando sua fatia de tempo
+ * na CPU (IO burst). Se o processo atual tiver concluido a sua fatia
+ * de tempo na CPU, retorna true. Se ainda estiver em execucao, retorna
+ * false. Nesta implementação, o IO não se sobrepõe.
  * @param q lista de processos
  * @param ioQueue lista de io
- * @param io atual
+ * @param io processo de io atual
  * @param i indice do processo atual
  * @param x quantidade de processos
  * @param clock instante de tempo
@@ -20,7 +23,7 @@
  * @param pb fatia de tempo do processo na CPU
  * @param pdone verifica se o processo atual esta executando
  */
-int ioBurstTime(Queue q[], Queue gnatt[], Queue* io, int i, int x, int* clock, int* sum, int* pb, int* pdone) {
+int ioBurstTime (Queue q[], Queue gnatt[], Queue* io, int i, int x, int* clock, int* sum, int* pb, int* pdone) {
   // Se o processo não terminar de executar e tiver io BurstTime
   if (q[i].head->ExecTime > 0
       && q[i].head->ioBurstTime > 0
@@ -38,14 +41,19 @@ int ioBurstTime(Queue q[], Queue gnatt[], Queue* io, int i, int x, int* clock, i
 
       // Índice da fila que será executada durante o tempo de ioexec na fila io
       int QueuePosx = (i == x - 1 || q[i].head->next != NULL) ? i : i + 1;
-      if (q[QueuePosx].head == ioexec) { enqueue(&q[QueuePosx], dequeue(&q[QueuePosx])); }
+      if (q[QueuePosx].head == ioexec) {
+        enqueue(&q[QueuePosx], dequeue(&q[QueuePosx]));
+      }
       if (q[QueuePosx].head != NULL) {
         // Continua executando processos enquanto o io ainda está acontecendo
         if (*clock < temp->CompleteTime) {
           int nQueuePosx = (i == x - 1 || q[QueuePosx].head->next == NULL) ? i : i + 1;
           rr(q[QueuePosx], &gnatt[QueuePosx], clock, sum, pb, temp->CompleteTime - *clock);
-          if (ioexec->ExecTimeQueue <= 0) enqueue(&q[(i == x - 1) ? i : i + 1], dequeue(&q[i]));
-          if (ioexec->ExecTimeQueue <= 0 || ioBurstTime(q, gnatt, io, QueuePosx, x, clock, sum, pb, pdone)) {
+          if (ioexec->ExecTimeQueue <= 0) {
+            enqueue(&q[(i == x - 1) ? i : i + 1], dequeue(&q[i]));
+          }
+          if (ioexec->ExecTimeQueue <= 0 ||
+              ioBurstTime(q, gnatt, io, QueuePosx, x, clock, sum, pb, pdone)) { // garante a recursao
             *pdone = 1;
             return 1;
           }
@@ -53,13 +61,13 @@ int ioBurstTime(Queue q[], Queue gnatt[], Queue* io, int i, int x, int* clock, i
         }
       }
 
-      // Tempo de processo na fila atual ainda não concluído
+      // Tempo do processo na fila atual concluído
       *pdone = 1;
       return 1;
     }
-  }
+  } // caso o tempo do processo na fila atual ainda nao estiver concluido
 
-  // Tempo de processo na fila atual ainda não concluído
+  // Tempo do processo na fila atual ainda não concluído
   *pdone = 0;
   return 0;
 }
