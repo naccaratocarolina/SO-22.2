@@ -25,7 +25,7 @@ int main() {
     exit(EXIT_FAILURE);
   }
 
-  // Armazena o numero de filas, numero de processos e quantum
+  // Armazena o numero de filas, numero de processos e priority boost
   int xys[3];
   fscanf(fp, "%d %d %d", &xys[0], &xys[1], &xys[2]);
   if (xys[2] == 0) xys[2] = 1;
