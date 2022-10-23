@@ -37,7 +37,7 @@ gcc main.c -o saida
 - A primeira linha contém 3 inteiros separados por espaço, X Y S.
   - X denota o numero de filas onde 2 ≤ X ≤ 5.
   - Y denota o número de processos onde 3 ≤ Y ≤ 100
-  - S denota o quantum.
+  - S denota o período de tempo para o aumento de prioridade (Priority Boost)
 
 - Haverá X linhas de inteiros separados por espaço A B C.
   - A é o ID da fila,
