@@ -4,16 +4,17 @@
 #include <pthread.h>
 
 // Tamanho da pagina
-#define PAGE_SIZE 64
+#define PAGE_SIZE 64 // 2 ^ 6
+#define OFFSET_BITS 6
+#define OFFSET_MASK PAGE_SIZE - 1
 
 // Numero de threads a serem criadas
 #define TLB_SIZE 16
 
-// Quantidade de frames dedicados para programas de usuario
-#define N_FRAMES 64
-
-// Quantidade de frames dedicado a cada processo de usuario
+// Memoria Fisica / RAM
+#define FRAME_SIZE 64 // Tamanho do buffer = 64
 #define N_WSL 4 // Working Set Limit
+#define RAM_SIZE FRAME_SIZE * PAGE_SIZE
 
 /* Variaveis globais */
 pthread_mutex_t mutex;
@@ -27,7 +28,7 @@ int hits = 0, faults = 0; // Acertos e erros no acesso de paginas na TLB
 // lru[i] = temp_i
 //   i: frame i
 //   temp_i: tempo gasto pelo frame i
-int lru[N_FRAMES];
+int lru[FRAME_SIZE];
 int lru_tlb[TLB_SIZE][2];
 
 /* Handler das threads */
@@ -35,7 +36,7 @@ void *accessTLB (void *arg) {
   // Identificador da thread
   long int id_thread = (long int) arg;
 
-  // --Inicio SC
+  // --Inicio SC                                  
   pthread_mutex_lock(&mutex);
 
   // Acessa a TLB. Se true, endereco encontrado na TLB
@@ -52,7 +53,7 @@ void *accessTLB (void *arg) {
 }
 
 void updateLru (void) {
-  for (int i=0; i<N_FRAMES; i++) {
+  for (int i=0; i<FRAME_SIZE; i++) {
     if (i == cur_frame) {
       // O cur_frame que acabou de ser usado é zerado
       lru[i] = 0;
@@ -81,8 +82,8 @@ void updateLruTlb (void) {
 int main (int argc, char *argv[]) {
   pthread_t tid_tlb[TLB_SIZE]; // Identificadores das threads no sistema (ou seja, na TLB)
   int page_table[PAGE_SIZE]; // Tabela de paginas --page_table[id_page]
-  int ram[N_FRAMES][N_FRAMES * 2]; // Memoria fisica
-  signed char buffer[N_FRAMES * 2]; // Buffer
+  int ram[FRAME_SIZE][FRAME_SIZE * 2]; // Memoria fisica
+  signed char buffer[FRAME_SIZE * 2]; // Buffer
 
   // Leitura e avaliacao dos parametros de entrada
   if (argc < 2) {
@@ -95,8 +96,8 @@ int main (int argc, char *argv[]) {
   pthread_mutex_init(&mutex, NULL);
 
   // Inicializa estruturas
-  memset(page_table, 0, N_FRAMES * sizeof(page_table[0]));
-  for (int i=0; i<N_FRAMES; i++) {
+  memset(page_table, 0, FRAME_SIZE * sizeof(page_table[0]));
+  for (int i=0; i<FRAME_SIZE; i++) {
     ram[i][0] = -1;
     lru[i] = 1024;
   }
@@ -127,11 +128,11 @@ int main (int argc, char *argv[]) {
     logical_address = address;
 
     offset = address;
-    offset = offset & 127;
+    offset = offset & OFFSET_MASK;
 
     id_page = address;           
-    id_page = id_page >> 8;
-    id_page = id_page & 127;
+    id_page = id_page >> OFFSET_BITS;
+    id_page = id_page & OFFSET_MASK;
 
     found_tlb = 0, found_pt = 0;
 
@@ -167,7 +168,7 @@ int main (int argc, char *argv[]) {
       // Houve page fault
       faults++;
       older = -1;
-      for (int i=0; i<N_FRAMES; i++) {
+      for (int i=0; i<FRAME_SIZE; i++) {
         // Busca o mais velho
         if (lru[i] > older) {
           older = lru[i];
@@ -193,7 +194,7 @@ int main (int argc, char *argv[]) {
     updateLruTlb();
 
     page_table[cur_frame] = id_page; // Salva na tabela de paginas
-    physical_address = cur_frame * (N_FRAMES * 2) + offset; // Calcula o endereço fisico
+    physical_address = cur_frame * (FRAME_SIZE * 2) + offset; // Calcula o endereço fisico
     value = ram[cur_frame][offset];
     printf("Endereço virtual: %d Endereço fisico: %d Valor: %d\n", logical_address, physical_address, value);
   }
