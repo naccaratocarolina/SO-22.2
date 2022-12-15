@@ -26,7 +26,7 @@ gcc main.c -o saida -pthread
 ```
 
 ## Premissas:
-- Os frames na memória física são preenchidos do 0 ao 63. Quando a mesma estiver cheia, aplicamos o algoritmo de sibstituição LRU para descobrir qual frame será atualizado
+- Os frames na memória são preenchidos do 0 ao 63. Quando a mesma estiver cheia, aplicamos o algoritmo de sibstituição LRU para descobrir qual frame será atualizado
 
 - Implementa o algoritmo LRU para determinar a substituição de páginas e substituição da TLB
 
