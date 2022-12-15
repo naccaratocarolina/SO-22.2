@@ -3,59 +3,51 @@
 #include <string.h>
 #include <pthread.h>
 
-// Tamanho da pagina
-#define PAGE_SIZE 64 // 2 ^ 6
-#define OFFSET_BITS 6
-#define OFFSET_MASK PAGE_SIZE - 1
+#define PAGE_SIZE 64
+#define TLB_SIZE 32
+#define FRAME_SIZE 64
+#define WORKING_SET_LIMIT 4
+#define RAM_SIZE FRAME_SIZE * WORKING_SET_LIMIT
 
-// Numero de threads a serem criadas
-#define TLB_SIZE 16
-
-// Memoria Fisica / RAM
-#define FRAME_SIZE 64 // Tamanho do buffer = 64
-#define N_WSL 4 // Working Set Limit
-#define RAM_SIZE FRAME_SIZE * PAGE_SIZE
+FILE *file; // Arquivos com dados de entrada (enderecos)
 
 /* Variaveis globais */
-pthread_mutex_t mutex;
-FILE *arquivo; // Arquivos com dados de entrada (enderecos)
-long int id_page; // Identificador da pagina na tabela de paginas
-int cur_frame; // Frame atual
-int found_tlb = 0, found_pt = 0; // Endereco encontrado na TLB ou tabela de paginas
+int page_table[PAGE_SIZE]; // Tabela de paginas --page_table[id_page]
 int tlb[TLB_SIZE][2]; // Translation Lookaside Buffer (armazena os tids locais) --tlb[id_page][cur_frame]
-int hits = 0, faults = 0; // Acertos e erros no acesso de paginas na TLB
+signed char buffer[RAM_SIZE]; // Buffer
+int ram[FRAME_SIZE][RAM_SIZE]; // Memoria fisica
+pthread_t tid_tlb[TLB_SIZE]; // Identificadores das threads no sistema
+int lru[FRAME_SIZE]; // index = frame, conteudo = tempo que foi utilizado
+int lru_tlb[TLB_SIZE][2]; // 0 = frame, 1 = tempo que foi utilizado
 
-// lru[i] = temp_i
-//   i: frame i
-//   temp_i: tempo gasto pelo frame i
-int lru[FRAME_SIZE];
-int lru_tlb[TLB_SIZE][2];
+long long page_id; // Identificador da pagina na tabela de paginas
+int found_tlb = 0, hits = 0, frame; 
+int frame_id = 0, thread_id = 0, tlb_id = 0;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Inicializa o mutex (lock de exclusao mutua)
 
 /* Handler das threads */
-void *accessTLB (void *arg) {
-  // Identificador da thread
-  long int id_thread = (long int) arg;
-
-  // --Inicio SC                                  
+void *accessTLB (void *arg)  {
+  // --Inicio SC   
   pthread_mutex_lock(&mutex);
 
-  // Acessa a TLB. Se true, endereco encontrado na TLB
-  if (tlb[id_thread][0] == id_page) {
+  // Acessa a TLB. Se true, address encontrado na TLB
+  if (tlb[thread_id][0] == page_id) {
     hits++;
-    cur_frame = tlb[id_thread][1];
-    found_tlb = 1; // Registra que o endereco foi encontrado na TLB
+    frame = tlb[thread_id][1];
+    found_tlb = 1; // Registra que o address foi encontrado na TLB
   }
+  thread_id++;
 
   // --Fim SC
   pthread_mutex_unlock(&mutex);
-
-  pthread_exit(NULL);
+  return arg;
 }
 
-void updateLru (void) {
-  for (int i=0; i<FRAME_SIZE; i++) {
-    if (i == cur_frame) {
-      // O cur_frame que acabou de ser usado é zerado
+void updateLru (void)  {
+  for (int i = 0; i < FRAME_SIZE; i++) {
+    if (i == frame) {
+      // O frame que acabou de ser usado é zerado
       lru[i] = 0;
     } else if (lru[i] != 1024) {
       // Os demais frames "envelhecem"
@@ -64,12 +56,12 @@ void updateLru (void) {
   }
 }
 
-void updateLruTlb (void) {
-  for (long int i=0; i<TLB_SIZE; i++) {
-    // Iguala o cur_frame tlb lru com o tlb atual
+void atualizaLRUTLB (void)  {
+  for (int i = 0; i < TLB_SIZE; i++) {
+    // Iguala o frame tlb lru com o tlb atual
     lru_tlb[i][0] = tlb[i][1];
-    if (tlb[i][1] == cur_frame) {
-      // A idade do cur_frame adicionado é igualado a 0
+    if (tlb[i][1] == frame) {
+      // A idade do frame adicionado é igualado a 0
       lru_tlb[i][1] = 0;
     } else if (lru_tlb[i][1] != 1024) {
       // Os demais frames "envelhecem"
@@ -79,73 +71,67 @@ void updateLruTlb (void) {
 }
 
 /* Funcao principal */
-int main (int argc, char *argv[]) {
-  pthread_t tid_tlb[TLB_SIZE]; // Identificadores das threads no sistema (ou seja, na TLB)
-  int page_table[PAGE_SIZE]; // Tabela de paginas --page_table[id_page]
-  int ram[FRAME_SIZE][FRAME_SIZE * 2]; // Memoria fisica
-  signed char buffer[FRAME_SIZE * 2]; // Buffer
-
+int main(int argc, char *argv[]) {
   // Leitura e avaliacao dos parametros de entrada
   if (argc < 2) {
-    printf("Digite: %s <arquivo.txt>\n", argv[0]);
+    printf("Digite: %s <file.txt>\n", argv[0]);
     return 1;
   }
 
-  // Inicializa o mutex (lock de exclusao mutua) de forma
-  // dinamica em tempo de execucao
-  pthread_mutex_init(&mutex, NULL);
-
   // Inicializa estruturas
-  memset(page_table, 0, FRAME_SIZE * sizeof(page_table[0]));
-  for (int i=0; i<FRAME_SIZE; i++) {
-    ram[i][0] = -1;
+  memset(page_table, -1, sizeof(page_table));
+  for (int i = 0; i < FRAME_SIZE; i++) {
     lru[i] = 1024;
+    ram[i][0] = -1;
   }
-  for (int i=0; i<TLB_SIZE; i++) {
-    tlb[i][0] = -1;
+  for (int i = 0; i < TLB_SIZE; i++) {
     lru_tlb[i][1] = 1024;
+    tlb[i][0] = -1;
   }
 
-  // Abre arquivo com dados de entrada e faz tratamento de erro
-  arquivo = fopen(argv[1], "r");
-  if (arquivo == NULL) {
+  // Abre file com dados de entrada e faz tratamento de erro
+  file = fopen(argv[1], "r");
+  if (file == NULL) {
       printf("--ERRO: fopen: Arquivo não encontrado\n");
       return 2;
+  }
+    
+    if (file == NULL) {
+      printf("Arquivo não encontrado\n");
+      return 0;
   }
 
   int address;
   long long offset;
-  int logical_address = 0, physical_address = 0;
-  int translated = 0; // Contador de enderecos examinados (ou seja, traduzidos)
-  int j = 0; // Variavel de controle
-  // Variaveis para o lru
-  int value = 0, least_occurred_frame = 0, older = -1, id_older = 0;
+  int translated = 0, logical_address, j = 0, physical_address = 0;
+  int faults = 0, found_pt = 0;
+  int valor = 0, older = -1, older_id = 0; 
 
-  while ((fscanf(arquivo, "%d", &address) != EOF)) {
+  while ((fscanf(file, "%d", &address) != EOF)) {
     // Inicializa tradução de endereços
     translated++;
 
     logical_address = address;
 
     offset = address;
-    offset = offset & OFFSET_MASK;
+    offset = offset & 255;
 
-    id_page = address;           
-    id_page = id_page >> OFFSET_BITS;
-    id_page = id_page & OFFSET_MASK;
+    page_id = address;           
+    page_id = page_id >> 6;
+    page_id = page_id & 255;
 
-    found_tlb = 0, found_pt = 0;
+    found_tlb = 0, found_pt = 0, thread_id = 0;
 
     // Cria as threads
-    for (long int i=0; i<TLB_SIZE; i++) {
-      if (pthread_create(&tid_tlb[i], NULL, accessTLB, NULL)) {
+    for (int i = 0; i < TLB_SIZE; i++) {
+      if (pthread_create(&(tid_tlb[i]), NULL, accessTLB, NULL)) {
         fprintf(stderr, "--ERRO: pthread_create\n");
         return 3;
       }
     }
 
     // Aguarda o termino das threads
-    for (long int i=0; i<TLB_SIZE; i++) {
+    for (int i = 0; i < TLB_SIZE; i++) {
       if (pthread_join(tid_tlb[i], NULL)) {
         fprintf(stderr, "--ERRO: pthread_join\n");
         return 3;
@@ -155,59 +141,55 @@ int main (int argc, char *argv[]) {
     // Caso o endereco requisitado nao seja encontrado na TLB
     if (found_tlb == 0) {
       // Procura na tabela de paginas
-      for (int i=0; i<PAGE_SIZE; i++) {
+      for (int i = 0; i < PAGE_SIZE; i++) {
         // Acessa a Tabela de paginas. Se true, endereco
         // encontrado na Tabela de paginas
-        if (page_table[i] == id_page) {
-          cur_frame = i;
+        if (page_table[i] == page_id) {
+          frame = i;
           found_pt = 1;
           break;
         }
       }
-
       // Houve page fault
       faults++;
       older = -1;
-      for (int i=0; i<FRAME_SIZE; i++) {
+      for (int i = 0; i < FRAME_SIZE; i++) {
         // Busca o mais velho
         if (lru[i] > older) {
           older = lru[i];
-          id_older = i;
+          older_id = i;
         }
       }
-      cur_frame = id_older;
 
       // Atualiza TLB
+      frame = older_id;
       older = -1, j = 0;
-      for (long int i=0; i<TLB_SIZE; i++) {
+      for (int i = 0; i < TLB_SIZE; i++) {
         if (lru_tlb[i][1] > older) {
           older = lru_tlb[i][1];
-          id_older = i;
-        }
+          older_id = i;
+        }  
       }
-      tlb[id_older][0] = id_page; // Substitui pelo mais velho
-      tlb[id_older][1] = cur_frame;
+      tlb[older_id][0] = page_id; // Substitui pelo mais velho
+      tlb[older_id][1] = frame;
     }
-
-    // Atualiza filas
     updateLru();
-    updateLruTlb();
+    atualizaLRUTLB();
 
-    page_table[cur_frame] = id_page; // Salva na tabela de paginas
-    physical_address = cur_frame * (FRAME_SIZE * 2) + offset; // Calcula o endereço fisico
-    value = ram[cur_frame][offset];
-    printf("Endereço virtual: %d Endereço fisico: %d Valor: %d\n", logical_address, physical_address, value);
+    page_table[frame] = page_id; // Salva na tabela de paginas
+    physical_address = frame * 256 + offset; // Calcula o endereço fisico
+    valor = ram[frame][offset]; // Obtem o valor
+    printf("Virtual address: %d Physical address: %d Value: %d\n", logical_address, physical_address, valor);
   }
-  
-  double pagerate = (double) faults / translated;
+  // Calcula estatisticas
   double tblrate = (double) hits / translated;
-  printf("Numero de endereços traduzidos: %d\n", translated);
-  printf("Page Faults: %d\nTaxa de Erro na Tabela de Paginas: %.3f\nAcertos TLB: %d\nTaxa de acerto na TLB %.3f\n",
-      faults, pagerate, hits, tblrate);
+  double pagerate = (double) faults / translated;
+  printf("Number of Translated Addresses = %d\nPage Faults = %d\nPage Fault Rate = %.3f\nTLB Hits = %d\nTLB Hit Rate = %.3f", 
+    translated, faults, pagerate, hits, tblrate);
 
   // Desaloca variaveis e termina
   pthread_mutex_destroy(&mutex);
-  fclose(arquivo);
+  fclose(file);
 
   return 0;
 }
