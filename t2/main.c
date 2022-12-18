@@ -270,7 +270,7 @@ void createNewPage(int processId)
 void swappingAndCreatePage(int processId)
 {
   Node *new, *temp;
-  int longerTime = -1, longerTimeId = 0, old_page_id, old_mapped_frame, time;
+  int longerTime = -1, longerTimeId = 0, lu_page_id, lu_mapped_frame, time;
   int work_set_count = process[processId].work_set_count;
 
   new = (Node *)malloc(sizeof(Node));
@@ -303,11 +303,11 @@ void swappingAndCreatePage(int processId)
   }
 
   // remove página da memória
-  old_page_id = process[processId].work_set[longerTimeId][0];
-  old_mapped_frame = page_table[old_page_id];
-  mapped_frames[old_mapped_frame] = 0;
+  lu_page_id = process[processId].work_set[longerTimeId][0];
+  lu_mapped_frame = page_table[lu_page_id];
+  mapped_frames[lu_mapped_frame] = 0;
   createNewPage(process[processId].id);
-  page_table[old_page_id] = -1;
+  page_table[lu_page_id] = -1;
   process[processId].work_set[longerTimeId][0] = page_id;
   process[processId].work_set[longerTimeId][1] = 0;
   process[processId].swap_count++;
