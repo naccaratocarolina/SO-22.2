@@ -29,6 +29,8 @@ gcc main.c -o saida -pthread
 #define TLB_SIZE 4
 #define RAM_SIZE 64
 #define PAGE_TABLE_SIZE 128
+#define PROCESS 20
+#define WORK_SET_LIMIT 4
 ```
 
 ## Premissas:

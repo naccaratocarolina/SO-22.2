@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #include <pthread.h>
 
@@ -8,6 +9,23 @@
 #define TLB_SIZE 4          // TLB comporta 4 frames
 #define RAM_SIZE 64         // a memória é limitada em 64 frames (256KB)
 #define PAGE_TABLE_SIZE 128 // tamnho da tabela da páginas 128 frames (512KB, endereços de 19 bits, 0 à 524287)
+#define PROCESS 20          // Número de processos
+#define WORK_SET_LIMIT 4    // Limite de páginas em memória pro processo
+
+typedef struct linkedList
+{
+  int data[2];
+  struct linkedList *previus;
+  struct linkedList *next;
+} LinkedList;
+
+typedef struct
+{
+  int id;
+  int work_set[4][2]; // int[page_id][time_count]
+  int work_set_count;
+  LinkedList *swap;
+} Process;
 
 /* Variaveis globais */
 int page_table[PAGE_TABLE_SIZE]; // Tabela de paginas --page_table[id_page]
@@ -25,6 +43,17 @@ int found_tlb = 0, hits = 0, frame;
 int frame_id = 0, thread_id = 0, tlb_id = 0;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Inicializa o mutex (lock de exclusao mutua)
+
+void delay(int milliseconds)
+{
+  long pause;
+  clock_t now, then;
+
+  pause = milliseconds * (CLOCKS_PER_SEC / 1000);
+  now = then = clock();
+  while ((now - then) < pause)
+    now = clock();
+}
 
 /* Handler das threads */
 void *accessTLB(void *arg)
@@ -131,7 +160,8 @@ int acessVirtualAdress(int offset)
     {
       if (mapped_frames[i] == 0)
       {
-        frame = mapped_frames[i];
+        frame = i;
+        mapped_frames[i] = 1;
         break;
       }
       else if (i == RAM_SIZE - 1)
@@ -185,52 +215,68 @@ void tableOutput(int processId)
 {
   printf("Processo %d \n", processId);
   printf("--------------------------------------------------------------------\n");
-  printf("ID\t-\tFRAME\n");
-  for (int i = PAGE_TABLE_SIZE - 1; i >= 0; i--)
-    printf("%d\t-\t%d\n", i, page_table[i]);
+  printf("ID\t-\tFRAME\t|\tID\t-\tFRAME\t|\tID\t-\tFRAME\t|\tID\t-\tFRAME\n");
+  int sv = PAGE_TABLE_SIZE / 4;
+  for (int i = 0; i < sv; i++)
+  {
+    printf("%d\t-\t%d\t|\t", i, page_table[i]);
+    printf("%d\t-\t%d\t|\t", i + sv, page_table[i + sv]);
+    printf("%d\t-\t%d\t|\t", i + 2 * sv, page_table[i + 2 * sv]);
+    printf("%d\t-\t%d\n", i + 3 * sv, page_table[i + 3 * sv]);
+  }
 
   printf("Obs: Frames com valores -1 não estão mapeados (presentes) na memoria virtual.\n");
+  printf("--------------------------------------------------------------------\n");
+}
+
+void createPage(int processId, int logical_address)
+{
+  int offset, physical_address, valor = 0;
+
+  tableOutput(processId);
+
+  page_id = logical_address / FRAME_SIZE;
+  offset = logical_address / PAGE_TABLE_SIZE;
+
+  physical_address = acessVirtualAdress(offset);
+
+  if (physical_address == -3)
+  {
+    printf("Não há memória suficiente para concluir esta operação.");
+    exit(0);
+  }
+
+  updateLru();
+  updateLRUTLB();
+
+  page_table[page_id] = frame; // Salva na tabela de paginas
+  valor = ram[offset][frame];  // Obtem o valor
+
+  printf("virtual_address: %d page_index: %d frame: %d physical_address: %d value: %d\n", logical_address, page_id, frame, physical_address, valor);
   printf("--------------------------------------------------------------------\n");
 }
 
 /* Funcao principal */
 int main(int argc, char *argv[])
 {
-  int offset,
-      logical_address, physical_address;
-  int valor = 0;
+  Process process[PROCESS];
 
   // Inicializa estruturas
   init();
 
-  /**
-   * Um processo vai tentar alocar endereço, o endereço vai ser mateado na ram
-   */
-
-  for (int i = 0; i < 1; i++)
+  // Criando processos
+  for (int i = 0; i < PROCESS; i++)
   {
-    tableOutput(i);
-
-    // logical_address = randint((128 * FRAME_SIZE) - 1); // process faz isso
-    logical_address = 4096;
-    page_id = logical_address / FRAME_SIZE;
-    offset = logical_address / PAGE_TABLE_SIZE;
-    physical_address = acessVirtualAdress(offset);
-
-    if (physical_address == -3)
-    {
-      printf("Não há memória suficiente para concluir esta operação.");
-      exit(0);
-    }
-    updateLru();
-    updateLRUTLB();
-
-    page_table[page_id] = frame; // Salva na tabela de paginas
-    valor = ram[offset][frame];  // Obtem o valor
-
-    printf("virtual_address: %d page_index: %d frame: %d physical_address: %d value: %d\n", logical_address, page_id, frame, physical_address, valor);
-    printf("--------------------------------------------------------------------\n");
+    process[i].id = i + 1;
+    process[i].work_set_count = 0;
+    createPage(i, 4096 * i);
+    process[i].work_set[0][0] = page_id;
+    process[i].work_set[0][1] = 0;
+    process[i].swap = NULL;
+    delay(3000);
   }
+
+  tableOutput(PROCESS);
 
   // Desaloca variaveis e termina
   pthread_mutex_destroy(&mutex);
