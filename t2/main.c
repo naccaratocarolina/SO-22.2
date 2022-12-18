@@ -22,7 +22,7 @@ typedef struct linkedList
 typedef struct process
 {
   int id;
-  int work_set[4][2]; // int[page_id][time_count]
+  int work_set[WORK_SET_LIMIT][2]; // int[page_id][time_count]
   int work_set_count;
   int pages;
   Node *swap;
