@@ -17,14 +17,14 @@ typedef struct linkedList
   int data[2];
   struct linkedList *previus;
   struct linkedList *next;
-} LinkedList;
+} Node;
 
-typedef struct
+typedef struct process
 {
   int id;
   int work_set[4][2]; // int[page_id][time_count]
   int work_set_count;
-  LinkedList *swap;
+  Node *swap;
 } Process;
 
 /* Variaveis globais */
@@ -271,11 +271,80 @@ int main(int argc, char *argv[])
   {
     process[i].id = i + 1;
     process[i].work_set_count = 0;
-    createNewPage(i);
-    process[i].work_set[0][0] = page_id;
+    // createNewPage(i);
+    // process[i].work_set[0][0] = page_id;
     process[i].work_set[0][1] = 0;
+    for (int j = 0; j < WORK_SET_LIMIT; j++)
+    {
+      process[i].work_set[j][0] = -1;
+      process[i].work_set[j][1] = 0;
+    }
     process[i].swap = NULL;
-    delay(3000);
+    // delay(3000);
+  }
+
+  while (1)
+  {
+    int longerTime, longerTimeId = 0, old_page_id, work_set_count, time;
+    Node *new, *temp;
+
+    new = (Node *)malloc(sizeof(Node));
+    temp = (Node *)malloc(sizeof(Node));
+
+    for (int i = 0; i < PROCESS; i++)
+    {
+      work_set_count = process[i].work_set_count;
+      // atualiza tempo da página na memória
+      for (int w = 0; w < work_set_count; w++)
+        process[i].work_set[w][1]++;
+
+      printf("\n%d %d %d %d\n", process[i].work_set[0][0], process[i].work_set[1][0], process[i].work_set[2][0], process[i].work_set[3][0]);
+
+      if (process[i].work_set_count < WORK_SET_LIMIT)
+      {
+        process[i].work_set_count++;
+        createNewPage(i);
+
+        process[i].work_set[work_set_count][0] = page_id;
+        process[i].work_set[work_set_count][1] = 0;
+      }
+      else
+      {
+        longerTime = -1;
+        for (int w = 0; w < work_set_count; w++)
+        {
+          time = process[i].work_set[w][1];
+          // new->data = process[i].work_set[i];
+          memcpy(new->data, process[i].work_set[w], sizeof(process[i].work_set[w]));
+          new->next = NULL;
+          new->previus = NULL;
+          if (time > longerTime)
+          {
+            longerTime = time;
+            longerTimeId = w;
+          }
+        }
+
+        // adiciona à swap quando a swap está vazia
+        if (process[i].swap == NULL)
+          process[i].swap = new;
+        else
+        {
+          temp = process[i].swap; // adiciona a referencia da swap para temp
+          while (temp->next != NULL)
+            temp = temp->next; // busca ultimo elemento lincado
+          new->previus = temp; // linca penultima página como previus
+          temp->next = new;    // linca últoma página como next.
+        }
+        createNewPage(process[i].id);
+        // remove página da memória
+        old_page_id = process[i].work_set[longerTimeId][0];
+        page_table[old_page_id] = -1;
+        process[i].work_set[longerTimeId][0] = page_id;
+        process[i].work_set[longerTimeId][1] = 0;
+      }
+      delay(3000);
+    }
   }
 
   tableOutput(PROCESS);
