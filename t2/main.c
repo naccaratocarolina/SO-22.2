@@ -181,13 +181,16 @@ void init()
     virtual_address_list[i] = i;
 }
 
-void tableOutput()
+void tableOutput(int processId)
 {
+  printf("Processo %d \n", processId);
+  printf("--------------------------------------------------------------------\n");
   printf("ID\t-\tFRAME\n");
   for (int i = PAGE_TABLE_SIZE - 1; i >= 0; i--)
     printf("%d\t-\t%d\n", i, page_table[i]);
 
   printf("Obs: Frames com valores -1 não estão mapeados (presentes) na memoria virtual.\n");
+  printf("--------------------------------------------------------------------\n");
 }
 
 /* Funcao principal */
@@ -206,24 +209,27 @@ int main(int argc, char *argv[])
 
   for (int i = 0; i < 1; i++)
   {
+    tableOutput(i);
+
     // logical_address = randint((128 * FRAME_SIZE) - 1); // process faz isso
     logical_address = 4096;
     page_id = logical_address / FRAME_SIZE;
     offset = logical_address / PAGE_TABLE_SIZE;
     physical_address = acessVirtualAdress(offset);
-    if (physical_address == -3)
-      exit(0);
 
+    if (physical_address == -3)
+    {
+      printf("Não há memória suficiente para concluir esta operação.");
+      exit(0);
+    }
     updateLru();
     updateLRUTLB();
 
     page_table[page_id] = frame; // Salva na tabela de paginas
     valor = ram[offset][frame];  // Obtem o valor
 
-    printf("Processo %d \n", i);
     printf("virtual_address: %d page_index: %d frame: %d physical_address: %d value: %d\n", logical_address, page_id, frame, physical_address, valor);
     printf("--------------------------------------------------------------------\n");
-    tableOutput();
   }
 
   // Desaloca variaveis e termina
