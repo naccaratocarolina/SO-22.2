@@ -39,11 +39,19 @@ pthread_t tid_tlb[TLB_SIZE]; // Identificadores das threads no sistema
 int lru[PAGE_TABLE_SIZE];    // index = frame, conteudo = tempo que foi utilizado
 int lru_tlb[TLB_SIZE][2];    // 0 = frame, 1 = tempo que foi utilizado
 
+Process process[PROCESS]; // Lista d processos
+
 int page_id; // Identificador da pagina na tabela de paginas
 int found_tlb = 0, hits = 0, frame;
 int frame_id = 0, thread_id = 0, tlb_id = 0;
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; // Inicializa o mutex (lock de exclusao mutua)
+
+int acessVirtualAdress(int offset);
+void createNewPage(int processId);
+void swappingAndCreatePage(int processId);
+void tableOutput(int processId);
+void init();
 
 void delay(int milliseconds)
 {
@@ -232,8 +240,6 @@ void createNewPage(int processId)
 {
   int offset, physical_address, logical_address, valor = 0;
 
-  tableOutput(processId);
-
   do
   {
     logical_address = rand() % PAGE_TABLE_SIZE * FRAME_SIZE;
@@ -246,8 +252,9 @@ void createNewPage(int processId)
 
   if (physical_address == -3)
   {
-    printf("Não há memória suficiente para concluir esta operação.\n");
-    exit(0);
+    // printf("Não há memória suficiente para concluir esta operação.\n");
+    swappingAndCreatePage(processId);
+    // exit(0);
   }
 
   updateLru();
@@ -260,10 +267,55 @@ void createNewPage(int processId)
   printf("--------------------------------------------------------------------\n");
 }
 
+void swappingAndCreatePage(int processId)
+{
+  Node *new, *temp;
+  int longerTime = -1, longerTimeId = 0, old_page_id, old_mapped_frame, time;
+  int work_set_count = process[processId].work_set_count;
+
+  new = (Node *)malloc(sizeof(Node));
+  temp = (Node *)malloc(sizeof(Node));
+
+  for (int w = 0; w < work_set_count; w++)
+  {
+    time = process[processId].work_set[w][1];
+    // new->data = process[processId].work_set[processId];
+    memcpy(new->data, process[processId].work_set[w], sizeof(process[processId].work_set[w]));
+    new->next = NULL;
+    new->previus = NULL;
+    if (time > longerTime)
+    {
+      longerTime = time;
+      longerTimeId = w;
+    }
+  }
+
+  // adiciona à swap quando a swap está vazia
+  if (process[processId].swap == NULL)
+    process[processId].swap = new;
+  else
+  {
+    temp = process[processId].swap; // adiciona a referencia da swap para temp
+    while (temp->next != NULL)
+      temp = temp->next; // busca ultimo elemento lincado
+    new->previus = temp; // linca penultima página como previus
+    temp->next = new;    // linca últoma página como next.
+  }
+
+  // remove página da memória
+  old_page_id = process[processId].work_set[longerTimeId][0];
+  old_mapped_frame = page_table[old_page_id];
+  mapped_frames[old_mapped_frame] = 0;
+  createNewPage(process[processId].id);
+  page_table[old_page_id] = -1;
+  process[processId].work_set[longerTimeId][0] = page_id;
+  process[processId].work_set[longerTimeId][1] = 0;
+  process[processId].swap_count++;
+}
+
 /* Funcao principal */
 int main(int argc, char *argv[])
 {
-  Process process[PROCESS];
   int completed_process = 0;
 
   // Inicializa estruturas
@@ -272,7 +324,7 @@ int main(int argc, char *argv[])
   // Criando processos
   for (int i = 0; i < PROCESS; i++)
   {
-    process[i].id = i + 1;
+    process[i].id = i;
     process[i].work_set_count = 0;
     // createNewPage(i);
     // process[i].work_set[0][0] = page_id;
@@ -290,11 +342,7 @@ int main(int argc, char *argv[])
 
   while (completed_process != PROCESS)
   {
-    int longerTime, longerTimeId = 0, old_page_id, work_set_count, time;
-    Node *new, *temp;
-
-    new = (Node *)malloc(sizeof(Node));
-    temp = (Node *)malloc(sizeof(Node));
+    int work_set_count;
 
     for (int i = 0; i < PROCESS; i++)
     {
@@ -312,6 +360,8 @@ int main(int argc, char *argv[])
       if (process[i].work_set_count < WORK_SET_LIMIT)
       {
         process[i].work_set_count++;
+
+        tableOutput(i);
         createNewPage(i);
 
         process[i].work_set[work_set_count][0] = page_id;
@@ -319,39 +369,8 @@ int main(int argc, char *argv[])
       }
       else
       {
-        longerTime = -1;
-        for (int w = 0; w < work_set_count; w++)
-        {
-          time = process[i].work_set[w][1];
-          // new->data = process[i].work_set[i];
-          memcpy(new->data, process[i].work_set[w], sizeof(process[i].work_set[w]));
-          new->next = NULL;
-          new->previus = NULL;
-          if (time > longerTime)
-          {
-            longerTime = time;
-            longerTimeId = w;
-          }
-        }
-
-        // adiciona à swap quando a swap está vazia
-        if (process[i].swap == NULL)
-          process[i].swap = new;
-        else
-        {
-          temp = process[i].swap; // adiciona a referencia da swap para temp
-          while (temp->next != NULL)
-            temp = temp->next; // busca ultimo elemento lincado
-          new->previus = temp; // linca penultima página como previus
-          temp->next = new;    // linca últoma página como next.
-        }
-        createNewPage(process[i].id);
-        // remove página da memória
-        old_page_id = process[i].work_set[longerTimeId][0];
-        page_table[old_page_id] = -1;
-        process[i].work_set[longerTimeId][0] = page_id;
-        process[i].work_set[longerTimeId][1] = 0;
-        process[i].swap_count++;
+        tableOutput(i);
+        swappingAndCreatePage(i);
       }
       delay(3000);
     }
