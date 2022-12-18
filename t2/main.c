@@ -33,7 +33,6 @@ int tlb[TLB_SIZE][2];            // Translation Lookaside Buffer (armazena os ti
 signed char buffer[RAM_SIZE];    // Buffer
 int ram[FRAME_SIZE][RAM_SIZE];   // Memoria fisica
 int mapped_frames[RAM_SIZE];
-int virtual_address_list[PAGE_TABLE_SIZE * FRAME_SIZE];
 pthread_t tid_tlb[TLB_SIZE]; // Identificadores das threads no sistema
 int lru[PAGE_TABLE_SIZE];    // index = frame, conteudo = tempo que foi utilizado
 int lru_tlb[TLB_SIZE][2];    // 0 = frame, 1 = tempo que foi utilizado
@@ -207,8 +206,6 @@ void init()
     lru_tlb[i][1] = 1024;
     tlb[i][0] = -1;
   }
-  for (int i = 0; i < FRAME_SIZE * PAGE_TABLE_SIZE; i++)
-    virtual_address_list[i] = i;
 }
 
 void tableOutput(int processId)
@@ -229,13 +226,18 @@ void tableOutput(int processId)
   printf("--------------------------------------------------------------------\n");
 }
 
-void createPage(int processId, int logical_address)
+void createNewPage(int processId)
 {
-  int offset, physical_address, valor = 0;
+  int offset, physical_address, logical_address, valor = 0;
 
   tableOutput(processId);
 
-  page_id = logical_address / FRAME_SIZE;
+  do
+  {
+    logical_address = rand() % PAGE_TABLE_SIZE * FRAME_SIZE;
+    page_id = logical_address / FRAME_SIZE;
+  } while (page_table[page_id] != -1);
+
   offset = logical_address / PAGE_TABLE_SIZE;
 
   physical_address = acessVirtualAdress(offset);
@@ -269,7 +271,7 @@ int main(int argc, char *argv[])
   {
     process[i].id = i + 1;
     process[i].work_set_count = 0;
-    createPage(i, 4096 * i);
+    createNewPage(i);
     process[i].work_set[0][0] = page_id;
     process[i].work_set[0][1] = 0;
     process[i].swap = NULL;
