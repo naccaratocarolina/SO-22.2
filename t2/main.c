@@ -138,7 +138,6 @@ int acessVirtualAdress(int offset)
         return -3;
     }
     lru[older_id] = 0;
-    page_table[older_id] = frame;
   }
 
   // Atualiza TLB
@@ -182,6 +181,15 @@ void init()
     virtual_address_list[i] = i;
 }
 
+void tableOutput()
+{
+  printf("ID\t-\tFRAME\n");
+  for (int i = PAGE_TABLE_SIZE - 1; i >= 0; i--)
+    printf("%d\t-\t%d\n", i, page_table[i]);
+
+  printf("Obs: Frames com valores -1 não estão mapeados (presentes) na memoria virtual.\n");
+}
+
 /* Funcao principal */
 int main(int argc, char *argv[])
 {
@@ -211,7 +219,11 @@ int main(int argc, char *argv[])
 
     page_table[page_id] = frame; // Salva na tabela de paginas
     valor = ram[offset][frame];  // Obtem o valor
+
+    printf("Processo %d \n", i);
     printf("virtual_address: %d page_index: %d frame: %d physical_address: %d value: %d\n", logical_address, page_id, frame, physical_address, valor);
+    printf("--------------------------------------------------------------------\n");
+    tableOutput();
   }
 
   // Desaloca variaveis e termina
