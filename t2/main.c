@@ -24,7 +24,9 @@ typedef struct process
   int id;
   int work_set[4][2]; // int[page_id][time_count]
   int work_set_count;
+  int pages;
   Node *swap;
+  int swap_count;
 } Process;
 
 /* Variaveis globais */
@@ -210,8 +212,8 @@ void init()
 
 void tableOutput(int processId)
 {
-  printf("Processo %d \n", processId);
-  printf("--------------------------------------------------------------------\n");
+  printf("Processo %d ", processId);
+  printf("---------------------------------------------------------------------------------------------\n");
   printf("ID\t-\tFRAME\t|\tID\t-\tFRAME\t|\tID\t-\tFRAME\t|\tID\t-\tFRAME\n");
   int sv = PAGE_TABLE_SIZE / 4;
   for (int i = 0; i < sv; i++)
@@ -244,7 +246,7 @@ void createNewPage(int processId)
 
   if (physical_address == -3)
   {
-    printf("Não há memória suficiente para concluir esta operação.");
+    printf("Não há memória suficiente para concluir esta operação.\n");
     exit(0);
   }
 
@@ -262,6 +264,7 @@ void createNewPage(int processId)
 int main(int argc, char *argv[])
 {
   Process process[PROCESS];
+  int completed_process = 0;
 
   // Inicializa estruturas
   init();
@@ -279,11 +282,13 @@ int main(int argc, char *argv[])
       process[i].work_set[j][0] = -1;
       process[i].work_set[j][1] = 0;
     }
+    process[i].pages = 10;
     process[i].swap = NULL;
+    process[i].swap_count = 0;
     // delay(3000);
   }
 
-  while (1)
+  while (completed_process != PROCESS)
   {
     int longerTime, longerTimeId = 0, old_page_id, work_set_count, time;
     Node *new, *temp;
@@ -293,12 +298,16 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < PROCESS; i++)
     {
+      if (process[i].swap_count + process[i].work_set_count >= process[i].pages)
+      {
+        completed_process++;
+        continue;
+      }
+
       work_set_count = process[i].work_set_count;
       // atualiza tempo da página na memória
       for (int w = 0; w < work_set_count; w++)
         process[i].work_set[w][1]++;
-
-      printf("\n%d %d %d %d\n", process[i].work_set[0][0], process[i].work_set[1][0], process[i].work_set[2][0], process[i].work_set[3][0]);
 
       if (process[i].work_set_count < WORK_SET_LIMIT)
       {
@@ -342,6 +351,7 @@ int main(int argc, char *argv[])
         page_table[old_page_id] = -1;
         process[i].work_set[longerTimeId][0] = page_id;
         process[i].work_set[longerTimeId][1] = 0;
+        process[i].swap_count++;
       }
       delay(3000);
     }
