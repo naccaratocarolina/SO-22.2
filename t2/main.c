@@ -3,13 +3,11 @@
 #include <string.h>
 #include <pthread.h>
 
-#define FRAME_SIZE 4096              // tamanho de quadro de página (frame) igual a 4KB, tamanho de uma página é igual a de um frame
-                                     // tamanho de uma página é igual a de um frame
-#define TLB_SIZE 4                   // TLB comporta 4 frames
-#define RAM_SIZE 64                  // a memória é limitada em 64 frames (256KB)
-#define PAGE_TABLE_SIZE 2 * RAM_SIZE // tamnho da tabela da páginas 128 frames (512KB, endereços de 19 bits, 0 à 524287)
-
-FILE *file; // Arquivos com dados de entrada (enderecos)
+#define FRAME_SIZE 4096     // tamanho de quadro de página (frame) igual a 4KB, tamanho de uma página é igual a de um frame
+                            // tamanho de uma página é igual a de um frame
+#define TLB_SIZE 4          // TLB comporta 4 frames
+#define RAM_SIZE 64         // a memória é limitada em 64 frames (256KB)
+#define PAGE_TABLE_SIZE 128 // tamnho da tabela da páginas 128 frames (512KB, endereços de 19 bits, 0 à 524287)
 
 /* Variaveis globais */
 int page_table[PAGE_TABLE_SIZE]; // Tabela de paginas --page_table[id_page]
@@ -22,7 +20,7 @@ pthread_t tid_tlb[TLB_SIZE]; // Identificadores das threads no sistema
 int lru[PAGE_TABLE_SIZE];    // index = frame, conteudo = tempo que foi utilizado
 int lru_tlb[TLB_SIZE][2];    // 0 = frame, 1 = tempo que foi utilizado
 
-long long page_id; // Identificador da pagina na tabela de paginas
+int page_id; // Identificador da pagina na tabela de paginas
 int found_tlb = 0, hits = 0, frame;
 int frame_id = 0, thread_id = 0, tlb_id = 0;
 
@@ -84,13 +82,10 @@ void updateLRUTLB(void)
   }
 }
 
-int acessVirtualAdress(virtualAdress, faults)
+int acessVirtualAdress(int offset)
 {
-  int offset, adress, older = 0, older_id = 0;
+  int adress, older = 0, older_id = 0;
   found_tlb = 0, thread_id = 0;
-
-  page_id = virtualAdress / FRAME_SIZE;
-  offset = virtualAdress / PAGE_TABLE_SIZE;
 
   /* Verifica se está presente na TLB */
 
@@ -140,7 +135,7 @@ int acessVirtualAdress(virtualAdress, faults)
         break;
       }
       else if (i == RAM_SIZE - 1)
-        return -3
+        return -3;
     }
     lru[older_id] = 0;
     page_table[older_id] = frame;
@@ -173,7 +168,7 @@ void init()
   memset(page_table, -1, sizeof(page_table));
   for (int i = 0; i < RAM_SIZE; i++)
     mapped_frames[i] = 0;
-  for (int i = 0; i < FRAME_SIZE; i++)
+  for (int i = 0; i < PAGE_TABLE_SIZE; i++)
   {
     lru[i] = 1024;
     ram[i][0] = -1;
@@ -201,11 +196,13 @@ int main(int argc, char *argv[])
    * Um processo vai tentar alocar endereço, o endereço vai ser mateado na ram
    */
 
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 1; i++)
   {
     // logical_address = randint((128 * FRAME_SIZE) - 1); // process faz isso
     logical_address = 4096;
-    physical_address = acessVirtualAdress(logical_address);
+    page_id = logical_address / FRAME_SIZE;
+    offset = logical_address / PAGE_TABLE_SIZE;
+    physical_address = acessVirtualAdress(offset);
     if (physical_address == -3)
       exit(0);
 
@@ -214,7 +211,7 @@ int main(int argc, char *argv[])
 
     page_table[page_id] = frame; // Salva na tabela de paginas
     valor = ram[offset][frame];  // Obtem o valor
-    printf("Virtual address: %d Physical address: %d Value: %d\n", logical_address, physical_address, valor);
+    printf("virtual_address: %d page_index: %d frame: %d physical_address: %d value: %d\n", logical_address, page_id, frame, physical_address, valor);
   }
 
   // Desaloca variaveis e termina
